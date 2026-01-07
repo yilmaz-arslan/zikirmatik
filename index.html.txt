@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Zikirmatik</title>
+
+<!-- PWA -->
+<meta name="theme-color" content="#0b1220" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<link href="https://fonts.googleapis.com/css2?family=Amiri&display=swap" rel="stylesheet">
+
+<style>
+:root{
+ --bg:#0b1220;--card:#111827;--text:#e5e7eb;--soft:#9ca3af;
+ --green:#15803d;--red:#991b1b;--gray:#4b5563;--blue:#1d4ed8;--purple:#7c3aed;
+ --border:#1f2937
+}
+.light{
+ --bg:#f3f4f6;--card:#ffffff;--text:#111827;--soft:#6b7280;--border:#e5e7eb
+}
+body{font-family:'Amiri',serif;background:var(--bg);color:var(--text);margin:0;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;max-width:480px;width:100%;padding:22px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+h1{margin:0 0 6px;font-size:24px}
+.small{font-size:13px;color:var(--soft)}
+input,select,button{width:100%;padding:12px;margin-top:10px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:16px}
+button{border:none;cursor:pointer;font-weight:500}
+.start{background:var(--green)}.stop{background:var(--red)}.reset{background:var(--gray)}.save{background:var(--blue)}.dua{background:var(--purple)}
+.counter{font-size:56px;margin:16px 0 6px}
+ul{list-style:none;padding:0;margin-top:14px;text-align:left;font-size:14px;color:var(--soft)}
+li{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px;margin-bottom:6px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center}
+.modal-box{background:var(--card);border-radius:16px;padding:20px;max-width:420px;width:90%}
+.stats{display:flex;justify-content:space-between;margin-top:10px;font-size:13px;color:var(--soft)}
+</style>
+</head>
+<body>
+<div class="card">
+<h1 id="title">📿 Zikirmatik</h1>
+<div class="small" id="today"></div>
+
+<select id="profile" onchange="changeProfile()">
+<option value="genel">Genel</option>
+<option value="aile">Aile</option>
+<option value="cocuk">Çocuk</option>
+</select>
+
+<select id="lang" onchange="setLang()">
+<option value="tr">Türkçe</option>
+<option value="ar">العربية</option>
+<option value="en">English</option>
+</select>
+
+<select id="zikr">
+<option value="">(Boş Sayaç)</option>
+<option>Subhanallah</option>
+<option>Elhamdulillah</option>
+<option>Allahu Ekber</option>
+<option>La ilahe illallah</option>
+</select>
+
+<input id="custom" placeholder="Kendi zikrini yaz" />
+
+<select id="target">
+<option value="0">Hedef yok</option>
+<option>33</option>
+<option>99</option>
+<option>100</option>
+</select>
+
+<select id="speed">
+<option value="1000">Normal hız</option>
+<option value="500">Hızlı</option>
+<option value="2000">Yavaş</option>
+</select>
+
+<label class="small"><input type="checkbox" id="sound" /> Ses</label>
+<label class="small"><input type="checkbox" id="vibration" /> Titreşim</label>
+<label class="small"><input type="checkbox" id="autoTheme" onchange="applyTheme()" /> Otomatik Tema</label>
+
+<div class="counter" id="count">0</div>
+<div class="stats">
+<span id="session">Oturum: 0</span>
+<span id="alltime">Toplam: 0</span>
+</div>
+
+<button class="start" onclick="start()">Başlat</button>
+<button class="stop" onclick="stop()">Durdur</button>
+<button class="reset" onclick="reset()">Sıfırla</button>
+<button class="save" onclick="save()">Kaydet</button>
+<button class="dua" onclick="openDua()">Dualar</button>
+<button onclick="exportData()">Yedekle</button>
+<button onclick="clearAll()">Tüm Verileri Sıfırla</button>
+
+<ul id="list"></ul>
+</div>
+
+<div class="modal" id="duaModal">
+<div class="modal-box">
+<h3>📿 Dualar</h3>
+<p>Allahümme salli alâ seyyidinâ Muhammed</p>
+<p>Rabbena la tuzığ kulûbenâ</p>
+<p>Hasbiyallâhü lâ ilâhe illâ hû</p>
+<button class="reset" onclick="closeDua()">Kapat</button>
+</div>
+</div>
+
+<script>
+let profile='genel';
+let count=0,total=0,interval=null,session=0;
+
+const countEl=document.getElementById('count');
+const todayEl=document.getElementById('today');
+const sessionEl=document.getElementById('session');
+const alltimeEl=document.getElementById('alltime');
+
+function load(){
+ count=Number(localStorage[profile+'Count']||0);
+ total=Number(localStorage[profile+'Total']||0);
+ countEl.textContent=count;
+ todayEl.textContent='Bugünkü toplam: '+total;
+ alltimeEl.textContent='Toplam: '+total;
+ session=0;sessionEl.textContent='Oturum: 0';
+}
+
+function tick(){
+ count++; total++; session++;
+ countEl.textContent=count;
+ todayEl.textContent='Bugünkü toplam: '+total;
+ sessionEl.textContent='Oturum: '+session;
+ alltimeEl.textContent='Toplam: '+total;
+ localStorage[profile+'Count']=count;
+ localStorage[profile+'Total']=total;
+ if(sound.checked)new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=').play();
+ if(vibration.checked && navigator.vibrate)navigator.vibrate(50);
+ if(target.value!=0 && count>=target.value)stop();
+}
+
+function start(){if(!interval)interval=setInterval(tick,speed.value)}
+function stop(){clearInterval(interval);interval=null}
+function reset(){stop();count=0;localStorage[profile+'Count']=0;countEl.textContent=0}
+function save(){const z=custom.value||zikr.value||'Zikir';const li=document.createElement('li');li.textContent=z+' → '+count;list.appendChild(li);custom.value='';reset()}
+function openDua(){duaModal.style.display='flex'}
+function closeDua(){duaModal.style.display='none'}
+function exportData(){const d={profile,count,total,history:list.innerText};const a=document.createElement('a');a.href='data:application/json,'+encodeURIComponent(JSON.stringify(d));a.download='zikirmatik_backup.json';a.click()}
+function clearAll(){if(confirm('Tüm veriler silinsin mi?')){localStorage.clear();location.reload()}}
+
+function setLang(){const t=title;const l=lang.value;if(l==='en')t.textContent='Tasbih';if(l==='ar')t.textContent='المسبحة';if(l==='tr')t.textContent='📿 Zikirmatik'}
+function changeProfile(){profile=document.getElementById('profile').value;load()}
+
+function applyTheme(){
+ if(!autoTheme.checked){document.body.classList.remove('light');return}
+ const h=new Date().getHours();
+ if(h>=7&&h<=18)document.body.classList.add('light');else document.body.classList.remove('light')
+}
+
+applyTheme();
+load();
+</script>
+</body>
+</html>
